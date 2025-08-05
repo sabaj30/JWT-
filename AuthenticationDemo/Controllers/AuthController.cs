@@ -42,5 +42,12 @@ namespace AuthenticationDemo.Controllers
         {
             return Ok("hi");
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("Admin Only")]
+        public IActionResult AdminOnlyEndpoint()
+        {
+            return Ok("Admin");
+        }
     }
 }
