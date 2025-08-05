@@ -1,10 +1,9 @@
 using AuthenticationDemo.Data;
-using Scalar.AspNetCore;
-using Microsoft.EntityFrameworkCore;
 using AuthenticationDemo.Services;
-using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,14 +23,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateAudience = true,
         ValidAudience = builder.Configuration["JWT:Audience"],
         ValidateLifetime = true,
-        IssuerSigningKey = new SymmetricSecurityKey (
+        IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["JWT:Token"]!)),
-         ValidateIssuerSigningKey = true
+        ValidateIssuerSigningKey = true
     };
 
 });
 
-builder.Services.AddScoped<IAuthService,AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())

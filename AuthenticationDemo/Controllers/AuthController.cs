@@ -24,15 +24,26 @@ namespace AuthenticationDemo.Controllers
         }
 
         [HttpPost("Login")]
-        public async Task<ActionResult<string>> Login(UserDto userDto)
+        public async Task<ActionResult<TokenResponseDto>> Login(UserDto userDto)
         {
-            var token = await authService.LoginAsync(userDto);
-            if (token == null)
+            var result = await authService.LoginAsync(userDto);
+            if (result == null)
             {
                 return BadRequest();
             }
 
-            return Ok(token);
+            return Ok(result);
+        }
+
+        [HttpPost("Refresh-Token")]
+        public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto requestDto)
+        {
+            var result = await authService.RefreshTokenAsync(requestDto);
+            if (result is null || result.AccessToken is null || result.RefreshToken is null)
+                return Unauthorized("refresh token invalid");
+
+            return Ok(result);
+
         }
 
 

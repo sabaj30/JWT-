@@ -6,37 +6,46 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace AuthenticationDemo.Services
 {
-    public class AuthService(UserDbContext context,IConfiguration configuration) : IAuthService
+    public class AuthService(UserDbContext context, IConfiguration configuration) : IAuthService
     {
-        public async Task<string?> LoginAsync(UserDto request)
+        public async Task<TokenResponseDto?> LoginAsync(UserDto request)
         {
-           var user = await context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserName);
+            var user = await context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserName);
             if (user == null)
             {
                 return null;
             }
-            if(new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
+            if (new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
             {
                 return null;
             }
 
-            string token = CreateToken(user);
-            return token;
+            return await CreateTokenResponse(user);
+        }
+
+        private async Task<TokenResponseDto> CreateTokenResponse(User user)
+        {
+            return new TokenResponseDto
+            {
+                AccessToken = CreateToken(user),
+                RefreshToken = await GenerateAndSaveRefreshToken(user),
+            };
         }
 
         public async Task<User?> RegisterAsync(UserDto request)
         {
-            if(await context.Users.AnyAsync(u => u.UserName == request.UserName))
+            if (await context.Users.AnyAsync(u => u.UserName == request.UserName))
             {
                 return null;
             }
 
             var user = new User();
-            var hashPassword = new PasswordHasher<User>().HashPassword(user,request.Password);
+            var hashPassword = new PasswordHasher<User>().HashPassword(user, request.Password);
 
             user.UserName = request.UserName;
             user.PasswordHash = hashPassword;
@@ -45,6 +54,42 @@ namespace AuthenticationDemo.Services
             await context.SaveChangesAsync();
 
             return user;
+        }
+
+        public async Task<TokenResponseDto?> RefreshTokenAsync(RefreshTokenRequestDto requestDto)
+        {
+            var user = await VAlidateRefreshTokenAsync(requestDto.UserId, requestDto.RefreshToken);
+            if (user is null)
+                return null;
+
+            return await CreateTokenResponse(user);
+        }
+
+        private async Task<User> VAlidateRefreshTokenAsync(Guid userId,string refreshToken)
+        {
+            var user = await context.Users.FindAsync(userId);
+            if(user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpireTime <= DateTime.UtcNow)
+            {
+                return null;
+            }
+            return user;
+        }
+
+        private string GenericRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+
+        private async Task<string> GenerateAndSaveRefreshToken(User user)
+        {
+            var refreshToken = GenericRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpireTime = DateTime.UtcNow.AddDays(1);
+            await context.SaveChangesAsync();
+            return refreshToken;
         }
 
         private string CreateToken(User user)
