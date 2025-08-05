@@ -1,13 +1,8 @@
 ﻿using AuthenticationDemo.Entities;
 using AuthenticationDemo.Models;
 using AuthenticationDemo.Services;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AuthenticationDemo.Controllers
 {
@@ -38,6 +33,14 @@ namespace AuthenticationDemo.Controllers
             }
 
             return Ok(token);
+        }
+
+
+        [Authorize]
+        [HttpGet]
+        public IActionResult AuthenticatedOnlyEndpoint()
+        {
+            return Ok("hi");
         }
     }
 }
